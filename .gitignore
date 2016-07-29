@@ -1,3 +1,4 @@
 data/private/*
 !data/private/.gitkeep
 .vscode
+pub/napierModel/out.scad
