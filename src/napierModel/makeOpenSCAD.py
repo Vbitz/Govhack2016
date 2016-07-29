@@ -38,6 +38,6 @@ if __name__ == "__main__":
         height = building["BLD_HEIGHT"]
         bottom = building["BOTTOM"]
         parsed_geo = parseOGCGeo(geo)
-        if (parsed_geo.centroid.x < 0 or parsed_geo.centroid.y < 0):
-            continue
-        writeOpenSCADPolygon(parsed_geo, float(height), bottom)
+        pGC = pointToM((parsed_geo.centroid.x, parsed_geo.centroid.y), )
+        if (pGC[0] < 0 and pGC[0] > -400000 and pGC[1] > 0 and pGC[1] < 300000):
+            writeOpenSCADPolygon(parsed_geo, float(height), float(bottom))
