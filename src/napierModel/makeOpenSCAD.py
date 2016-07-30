@@ -4,6 +4,10 @@ from os.path import join as path_join
 
 BASE_PATH = path_absoulte("../../data/private/napierModel")
 CSV_BUILDINGS = path_join(BASE_PATH, "BUILDINGS.csv")
+OUTPUT_DIR = path_absoulte("../../pub/napierModel/output")
+
+if not os.path.exists(OUTPUT_DIR):
+    os.mkdir(OUTPUT_DIR)
 
 def pointToM(pt):
     x, y = pt
@@ -20,7 +24,7 @@ def parseOGCGeo(str):
 def writeOpenSCADPolygon(geo, height, bottom):
     points = [pointToM(pt) for pt in geo.exterior.coords]
     strValue = str(points).replace("(", "[").replace(")", "]")
-    print "translate([0, 0, %s]) linear_extrude(%s) polygon(points=%s);" % (str(bottom * 100), str(height * 100), strValue, )
+    return "translate([0, 0, %s]) linear_extrude(%s) polygon(points=%s);\n" % (str(bottom * 100), str(height * 100), strValue, )
 
 def read_csv_dict(filename):
     f = open(filename, "rb")
@@ -33,11 +37,16 @@ if __name__ == "__main__":
     buildingData = read_csv_dict(CSV_BUILDINGS)
     # print "loaded", len(buildingData), "buildings"
     i = 0
+    current_file = open(path_join(OUTPUT_DIR, "out%s.scad" % (i, )), "wb")
     for building in buildingData:
         geo = building["OGC_GEOMETRY"]
         height = building["BLD_HEIGHT"]
         bottom = building["BOTTOM"]
         parsed_geo = parseOGCGeo(geo)
         pGC = pointToM((parsed_geo.centroid.x, parsed_geo.centroid.y), )
-        if (pGC[0] < 0 and pGC[0] > -400000 and pGC[1] > 0 and pGC[1] < 300000):
-            writeOpenSCADPolygon(parsed_geo, float(height), float(bottom))
+        if (pGC[0] < 0 and pGC[0] > -200000 and pGC[1] > 0 and pGC[1] < 200000):
+            current_file.write(writeOpenSCADPolygon(parsed_geo, float(height), float(bottom)))
+        i += 1
+        if i % 1000 == 0:
+            current_file.close()
+            current_file = open(path_join(OUTPUT_DIR, "out%s.scad" % (i, )), "wb")

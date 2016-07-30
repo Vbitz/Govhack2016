@@ -2,3 +2,8 @@ data/private/*
 !data/private/.gitkeep
 .vscode
 pub/napierModel/out.scad
+
+# Ignore 3D Format
+*.scad
+*.fbx
+*.stl
