@@ -43,7 +43,10 @@ ID_BLACKLIST = [
     "223520473",
     "344611756",
     "351544130",
-    "430300593"
+    "430300593",
+    "430448721",
+    "430463131",
+    "430463510"
 ]
 
 SPORT_LIST = [
@@ -73,7 +76,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 class RotateWriter(object):
-    def __init__(self, baseFile, maxI=25):
+    def __init__(self, baseFile, maxI=50):
         self.x = 0
         self.i = 0
         self.maxI = maxI
@@ -101,16 +104,18 @@ def pointToM(x, y):
     e, n, _, _ = utm.from_latlon(float(x), float(y))
     return e, n
 
+UNIFORM_SCALE = 2.5
+
 def pointsToLine(points, buffer):
-    return shapely.geometry.LineString([(point["x"] * 100, point["y"] * 100) for point in points]).buffer(buffer * 100)
+    return shapely.geometry.LineString([(point["x"] * UNIFORM_SCALE, point["y"] * UNIFORM_SCALE) for point in points]).buffer(buffer * UNIFORM_SCALE)
 
 def pointsToPolygon(points):
-    return shapely.geometry.Polygon([(point["x"] * 100, point["y"] * 100) for point in points])
+    return shapely.geometry.Polygon([(point["x"] * UNIFORM_SCALE, point["y"] * UNIFORM_SCALE) for point in points])
 
 def writeOpenSCADPolygon(height, geo):
     points = [pt for pt in geo.exterior.coords]
     strValue = str(points).replace("(", "[").replace(")", "]")
-    return "linear_extrude(%s) polygon(points=%s);\n" % (str(height * 100), strValue, )
+    return "linear_extrude(%s) polygon(points=%s);\n" % (str(height * UNIFORM_SCALE), strValue, )
 
 def parseOSMXML(filename):
     tree = ET.parse(filename)
@@ -195,61 +200,31 @@ if __name__ == "__main__":
     parkingFile = RotateWriter(PARKING_SCAD)
 
     for element in osmData:
-        if element.get("building", "no") != "no":
-            buildingHeight = float(element.get("height", "3.0"))
-            keys = [key for key in element]
-            if element.get("amenity", "no") in AMENITY_LIST:
-                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            elif element.get("shop", "no") != "no" or element.get("product", "no") != "no" or element.get("website", "no") != "no":
-                buildingHeight *= 2
-                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            elif element.get("shop", "no") == "trade":
-                buildingHeight *= 2
-                indBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            elif element.get("building", "no") == "school":
-                buildingHeight *= 2
-                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            elif element.get("building", "no") == "church":
-                buildingHeight *= 2
-                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            elif element.get("building", "no") == "garage" or element.get("building", "no") == "residential":
-                buildingHeight = 4.0
-                resBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            elif element.get("leisure", "no") == "laser_tag":
-                buildingHeight *= 2
-                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            elif len(keys) == 4:
-                resBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            elif len(keys) == 5:
-                resBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
-            else:
-                print "error", element
-                raise Exception()
-        elif element.get("building", "no") == "roof":
+        if element.get("building", "no") == "roof":
             buildingHeight = 1.2
             comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
         elif element.get("service", "no") == "driveway" or element.get("highway", "no") == "service":
-            servicesFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 1.5)))
+            servicesFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 1.5)))
         elif element.get("highway", "no") == "residential":
-            residentialFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 1.5)))
+            residentialFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 1.5)))
         elif element.get("highway", "no") == "secondary" or element.get("highway", "no") == "unclassified":
-            highwayFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 2.5)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 2.5)))
         elif element.get("highway", "no") == "secondary_link":
-            highwayFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 2.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 2.0)))
         elif element.get("highway", "no") == "primary_link":
-            highwayFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 2.5)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 2.5)))
         elif element.get("highway", "no") == "primary":
-            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 4.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.6, pointsToLine(element.get("__points__"), 4.0)))
         elif element.get("highway", "no") == "tertiary":
-            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 1.5)))
+            highwayFile.write(writeOpenSCADPolygon(0.5, pointsToLine(element.get("__points__"), 1.5)))
         elif element.get("highway", "no") == "footway" or element.get("highway", "no") == "path":
-            footwayFile.write(writeOpenSCADPolygon(0.1, pointsToLine(element.get("__points__"), 0.5)))
+            footwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 0.5)))
         elif element.get("highway", "no") == "trunk":
-            highwayFile.write(writeOpenSCADPolygon(0.1, pointsToLine(element.get("__points__"), 5.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 5.0)))
         elif element.get("highway", "no") == "trunk_link":
-            highwayFile.write(writeOpenSCADPolygon(0.1, pointsToLine(element.get("__points__"), 4.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 4.0)))
         elif element.get("railway", "no") == "rail":
-            highwayFile.write(writeOpenSCADPolygon(0.1, pointsToLine(element.get("__points__"), 4.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 4.0)))
         elif element.get("tunnel", "no") == "culvert":
             pass
         elif element.get("leisure", "no") in LEISURE_LIST or element.get("sport", "no") in SPORT_LIST or element.get("landuse", "no") == "recreation_ground" or element.get("landuse", "no") == "forest" or element.get("landuse", "no") == "vineyard":
@@ -282,6 +257,36 @@ if __name__ == "__main__":
         elif element.get("power", "no") == "minor_line":
             # TODO: Handle this 
             pass
+        elif element.get("building", "no") != "no" or element.get("height", "no") != "no":
+            buildingHeight = float(element.get("height", "3.0"))
+            keys = [key for key in element]
+            if element.get("amenity", "no") in AMENITY_LIST:
+                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif element.get("shop", "no") != "no" or element.get("product", "no") != "no" or element.get("website", "no") != "no":
+                buildingHeight *= 2
+                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif element.get("shop", "no") == "trade":
+                buildingHeight *= 2
+                indBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif element.get("building", "no") == "school":
+                buildingHeight *= 2
+                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif element.get("building", "no") == "church":
+                buildingHeight *= 2
+                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif element.get("building", "no") == "garage" or element.get("building", "no") == "residential":
+                buildingHeight = 4.0
+                resBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif element.get("leisure", "no") == "laser_tag":
+                buildingHeight *= 2
+                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif len(keys) == 4:
+                resBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif len(keys) == 5:
+                resBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            else:
+                print "error", element
+                raise Exception()
         else:
             print "error", element
             raise Exception()
