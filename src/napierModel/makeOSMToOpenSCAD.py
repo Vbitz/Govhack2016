@@ -4,19 +4,88 @@ from os.path import abspath as path_absoulte
 from os.path import join as path_join
 
 BASE_PATH = path_absoulte("../../data/private/napierModel")
-OSM_INPUT = path_join(BASE_PATH, "napier_small.osm")
+OSM_INPUT = path_join(BASE_PATH, "napier_large.osm")
 OUTPUT_DIR = path_absoulte("../../pub/napierModel/output_scad")
-BUILDING_SCAD = path_join(OUTPUT_DIR, "buildings.scad")
+
+RES_BUILDING_SCAD = path_join(OUTPUT_DIR, "resBuildings%s.scad")
+COM_BUILDING_SCAD = path_join(OUTPUT_DIR, "comBuildings%s.scad")
+IND_BUILDING_SCAD = path_join(OUTPUT_DIR, "indBuildings%s.scad")
+
+SERVICES_SCAD = path_join(OUTPUT_DIR, "services%s.scad")
+RES_SCAD = path_join(OUTPUT_DIR, "residential%s.scad")
+HIGHWAY_SCAD = path_join(OUTPUT_DIR, "highway%s.scad")
+FOOTWAY_SCAD = path_join(OUTPUT_DIR, "footway%s.scad")
+GRASS_SCAD = path_join(OUTPUT_DIR, "grass%s.scad")
+RESLAND_SCAD = path_join(OUTPUT_DIR, "residentialLand%s.scad")
+COMLAND_SCAD = path_join(OUTPUT_DIR, "commercialLand%s.scad")
+WALL_SCAD = path_join(OUTPUT_DIR, "wall%s.scad")
+PARKING_SCAD = path_join(OUTPUT_DIR, "parking%s.scad")
+
+ID_BLACKLIST = [
+    "89197847",
+    "89786272",
+    "89786240",
+    "89197868",
+    "294160250",
+    "430453726",
+    "430453727",
+    "116268161",
+    "215036732",
+    "215036734"
+]
+
+SPORT_LIST = [
+    "cricket",
+    "rugby",
+    "skating",
+    "bowls"
+]
+
+LEISURE_LIST = [
+    "swimming_pool",
+    "park",
+    "stadium",
+    "pitch",
+    "playground"
+]
 
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
+
+class RotateWriter(object):
+    def __init__(self, baseFile, maxI=25):
+        self.x = 0
+        self.i = 0
+        self.maxI = maxI
+        self.baseFile = baseFile
+        self.fileObject = open(self.formatFilename(), "wb")
+        print "writing to ", self.formatFilename()
+    
+    def formatFilename(self):
+        return self.baseFile % (self.x, )
+
+    def write(self, str):
+        self.fileObject.write(str)
+        self.i += 1
+        if self.i > self.maxI:
+            self.x += 1
+            self.i = 0
+            self.fileObject.close()
+            self.fileObject = open(self.formatFilename(), "wb")
+            print "writing to ", self.formatFilename()
+
+    def close(self):
+        self.fileObject.close()
 
 def pointToM(x, y):
     e, n, _, _ = utm.from_latlon(float(x), float(y))
     return e, n
 
-def pointsToGeo(points):
-    return shapely.geometry.Polygon([(point["x"], point["y"]) for point in points])
+def pointsToLine(points, buffer):
+    return shapely.geometry.LineString([(point["x"] * 100, point["y"] * 100) for point in points]).buffer(buffer)
+
+def pointsToPolygon(points):
+    return shapely.geometry.Polygon([(point["x"] * 100, point["y"] * 100) for point in points])
 
 def writeOpenSCADPolygon(height, geo):
     points = [pt for pt in geo.exterior.coords]
@@ -64,6 +133,8 @@ def parseOSMXML(filename):
                     newWay["__points__"] += [nodeRef]
                 else:
                     raise Exception(subchild.tag)
+            if newWay["id"] in ID_BLACKLIST:
+                continue
             ret += [newWay]
         elif child.tag == "relation":
             continue
@@ -75,6 +146,10 @@ def parseOSMXML(filename):
                     print "relation.member", subchild.attrib
                 else:
                     raise Exception(subchild.tag)
+        elif child.tag == "note":
+            continue
+        elif child.tag == "meta":
+            continue
         else:
             raise Exception(child.tag)
     return ret
@@ -82,11 +157,93 @@ def parseOSMXML(filename):
 if __name__ == "__main__":
     osmData = parseOSMXML(OSM_INPUT)
 
-    buildingFile = open(BUILDING_SCAD, "wb")
+    resBuildingFile = RotateWriter(RES_BUILDING_SCAD)
+    comBuildingFile = RotateWriter(COM_BUILDING_SCAD)
+    indBuildingFile = RotateWriter(IND_BUILDING_SCAD)
+
+    servicesFile = RotateWriter(SERVICES_SCAD)
+    residentialFile = RotateWriter(RES_SCAD)
+    residentialLandFile = RotateWriter(RESLAND_SCAD)
+    commercialLandFile = RotateWriter(COMLAND_SCAD)
+    highwayFile = RotateWriter(HIGHWAY_SCAD)
+    footwayFile = RotateWriter(FOOTWAY_SCAD)
+    grassFile = RotateWriter(GRASS_SCAD)
+    wallFile = RotateWriter(WALL_SCAD)
+    parkingFile = RotateWriter(PARKING_SCAD)
 
     for element in osmData:
         if element.get("building", "no") == "yes":
             buildingHeight = float(element.get("height", "3.0"))
-            buildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToGeo(element.get("__points__"))))
-
-    buildingFile.close()
+            keys = [key for key in element]
+            if element.get("amenity", "no") == "shelter":
+                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif element.get("shop", "no") == "supermarket":
+                buildingHeight *= 2
+                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif len(keys) == 4:
+                comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            elif len(keys) == 5:
+                resBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+            else:
+                print "error", element
+                raise Exception()
+        elif element.get("building", "no") == "church":
+            buildingHeight = 6.0
+            comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+        elif element.get("building", "no") == "garage" or element.get("building", "no") == "residential":
+            buildingHeight = 4.0
+            resBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+        elif element.get("building", "no") == "roof":
+            buildingHeight = 1.2
+            comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
+        elif element.get("service", "no") == "driveway" or element.get("highway", "no") == "service":
+            servicesFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 1.5)))
+        elif element.get("highway", "no") == "residential":
+            residentialFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 15)))
+        elif element.get("highway", "no") == "secondary" or element.get("highway", "no") == "unclassified":
+            highwayFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 25)))
+        elif element.get("highway", "no") == "secondary_link":
+            highwayFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 20)))
+        elif element.get("highway", "no") == "primary_link":
+            highwayFile.write(writeOpenSCADPolygon(0.2, pointsToLine(element.get("__points__"), 25)))
+        elif element.get("highway", "no") == "primary":
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 40)))
+        elif element.get("highway", "no") == "tertiary":
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 15)))
+        elif element.get("highway", "no") == "footway":
+            footwayFile.write(writeOpenSCADPolygon(0.1, pointsToLine(element.get("__points__"), 15)))
+        elif element.get("highway", "no") == "trunk":
+            highwayFile.write(writeOpenSCADPolygon(0.1, pointsToLine(element.get("__points__"), 50)))
+        elif element.get("highway", "no") == "trunk_link":
+            highwayFile.write(writeOpenSCADPolygon(0.1, pointsToLine(element.get("__points__"), 40)))
+        elif element.get("railway", "no") == "rail":
+            highwayFile.write(writeOpenSCADPolygon(0.1, pointsToLine(element.get("__points__"), 40)))
+        elif element.get("tunnel", "no") == "culvert":
+            pass
+        elif element.get("leisure", "no") in LEISURE_LIST or element.get("sport", "no") in SPORT_LIST or element.get("landuse", "no") == "recreation_ground" or element.get("landuse", "no") == "forest":
+            grassFile.write(writeOpenSCADPolygon(0.2, pointsToPolygon(element.get("__points__"))))
+        elif element.get("landuse", "no") == "residential":
+            residentialLandFile.write(writeOpenSCADPolygon(0.2, pointsToPolygon(element.get("__points__"))))
+        elif element.get("landuse", "no") == "religious":
+            commercialLandFile.write(writeOpenSCADPolygon(0.2, pointsToPolygon(element.get("__points__"))))
+        elif element.get("landuse", "no") == "retail" or element.get("landuse", "no") == "commercial" or element.get("landuse", "no") == "orchard":
+            commercialLandFile.write(writeOpenSCADPolygon(0.2, pointsToPolygon(element.get("__points__"))))
+        elif element.get("power", "no") == "sub_station":
+            commercialLandFile.write(writeOpenSCADPolygon(5, pointsToPolygon(element.get("__points__"))))
+        elif element.get("waterway", "no") == "riverbank" or element.get("waterway", "no") == "river" or element.get("waterway", "no") == "drain" or element.get("waterway", "no") == "stream":
+            # TODO: Handle this
+            pass
+        elif element.get("barrier", "no") == "low":
+            wallFile.write(writeOpenSCADPolygon(0.7, pointsToLine(element.get("__points__"), 0.1)))
+        elif element.get("barrier", "no") == "fence":
+            wallFile.write(writeOpenSCADPolygon(1.2, pointsToLine(element.get("__points__"), 0.1)))
+        elif element.get("amenity", "no") == "parking":
+            parkingFile.write(writeOpenSCADPolygon(0.4, pointsToPolygon(element.get("__points__"))))
+        elif element.get("amenity", "no") == "school" or element.get("amenity", "no") == "kindergarten":
+            commercialLandFile.write(writeOpenSCADPolygon(0.4, pointsToPolygon(element.get("__points__"))))
+        elif element.get("power", "no") == "minor_line":
+            # TODO: Handle this 
+            pass
+        else:
+            print "error", element
+            raise Exception()
