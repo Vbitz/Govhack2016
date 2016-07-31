@@ -104,7 +104,7 @@ def pointToM(x, y):
     e, n, _, _ = utm.from_latlon(float(x), float(y))
     return e, n
 
-UNIFORM_SCALE = 2.5
+UNIFORM_SCALE = 1
 
 def pointsToLine(points, buffer):
     return shapely.geometry.LineString([(point["x"] * UNIFORM_SCALE, point["y"] * UNIFORM_SCALE) for point in points]).buffer(buffer * UNIFORM_SCALE)
@@ -204,27 +204,27 @@ if __name__ == "__main__":
             buildingHeight = 1.2
             comBuildingFile.write(writeOpenSCADPolygon(buildingHeight, pointsToPolygon(element.get("__points__"))))
         elif element.get("service", "no") == "driveway" or element.get("highway", "no") == "service":
-            servicesFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 1.5)))
+            servicesFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 2)))
         elif element.get("highway", "no") == "residential":
-            residentialFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 1.5)))
+            residentialFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 5)))
         elif element.get("highway", "no") == "secondary" or element.get("highway", "no") == "unclassified":
-            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 2.5)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 7)))
         elif element.get("highway", "no") == "secondary_link":
-            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 2.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 4)))
         elif element.get("highway", "no") == "primary_link":
-            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 2.5)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 5)))
         elif element.get("highway", "no") == "primary":
-            highwayFile.write(writeOpenSCADPolygon(0.6, pointsToLine(element.get("__points__"), 4.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.6, pointsToLine(element.get("__points__"), 10)))
         elif element.get("highway", "no") == "tertiary":
-            highwayFile.write(writeOpenSCADPolygon(0.5, pointsToLine(element.get("__points__"), 1.5)))
+            highwayFile.write(writeOpenSCADPolygon(0.5, pointsToLine(element.get("__points__"), 3)))
         elif element.get("highway", "no") == "footway" or element.get("highway", "no") == "path":
-            footwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 0.5)))
+            footwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 1)))
         elif element.get("highway", "no") == "trunk":
-            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 5.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 15)))
         elif element.get("highway", "no") == "trunk_link":
-            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 4.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 10)))
         elif element.get("railway", "no") == "rail":
-            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 4.0)))
+            highwayFile.write(writeOpenSCADPolygon(0.4, pointsToLine(element.get("__points__"), 10)))
         elif element.get("tunnel", "no") == "culvert":
             pass
         elif element.get("leisure", "no") in LEISURE_LIST or element.get("sport", "no") in SPORT_LIST or element.get("landuse", "no") == "recreation_ground" or element.get("landuse", "no") == "forest" or element.get("landuse", "no") == "vineyard":
