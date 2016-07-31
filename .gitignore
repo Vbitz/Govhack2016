@@ -5,5 +5,5 @@ pub/napierModel/out.scad
 
 # Ignore 3D Format
 *.scad
-*.fbx
 *.stl
+# Don't ignore .fbx so we can publish the infomation.
